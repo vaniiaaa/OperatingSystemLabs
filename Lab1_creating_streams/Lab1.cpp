@@ -7,17 +7,14 @@ struct ThreadData
 {
     int *arr;
     int size;
-    int timeout;
 };
 
 DWORD WINAPI worker(LPVOID data_)
-{   
+{
     ThreadData* data = (ThreadData*)data_;
     int* arr = data->arr;
     int size = data->size;
-    int timeout = data->timeout;
     bool flag = 0;
-    Sleep(timeout);
     for (int i = 0; i < size; ++i)
     {
         if (arr[i] % 9 == 0) 
@@ -35,9 +32,7 @@ unsigned __stdcall worker2(LPVOID data_)
     ThreadData* data = (ThreadData*)data_;
     int* arr = data->arr;
     int size = data->size;
-    int timeout = data->timeout;
     bool flag = 0;
-    Sleep(timeout);
     for (int i = 0; i < size; ++i)
     {
         if (arr[i] % 9 == 0) 
@@ -65,17 +60,19 @@ int main()
     cout << "Enter timeout" << endl;
     cin >> timeout;
 
-    ThreadData* data = new ThreadData{arr, size, timeout};
+    ThreadData* data = new ThreadData{arr, size};
     HANDLE hWorker1, hWorker2;
     DWORD IDWorker1;
     unsigned int IDWorker2;
 
     hWorker1 = CreateThread(NULL, 0, worker, data, CREATE_SUSPENDED, &IDWorker1);
+    Sleep(timeout);
     ResumeThread(hWorker1);
     WaitForSingleObject(hWorker1, INFINITE);
     CloseHandle(hWorker1);
 
     hWorker2 = (HANDLE)_beginthreadex(NULL, 0, worker2, data, CREATE_SUSPENDED, &IDWorker2);
+    Sleep(timeout);
     ResumeThread(hWorker2);
     WaitForSingleObject(hWorker2, INFINITE);
     CloseHandle(hWorker2);
