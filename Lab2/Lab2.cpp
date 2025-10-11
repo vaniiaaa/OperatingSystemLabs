@@ -3,7 +3,6 @@
 #include <iostream>
 #include <string>
 
-using namespace std;
 
 void ModeChild()
 {
@@ -12,14 +11,14 @@ void ModeChild()
     DWORD bytesRead;
     if (!ReadFile(GetStdHandle(STD_INPUT_HANDLE), &size, sizeof(size), &bytesRead, NULL))
     {
-        cerr << "Child: Error reading array size" << endl;
+        std::cerr << "Child: Error reading array size" << std::endl;
         return;
     }
     
     int* arr = new int[size];
     if (!ReadFile(GetStdHandle(STD_INPUT_HANDLE), arr, size * sizeof(int), &bytesRead, NULL))
     {
-        cerr << "Child: Error reading array" << endl;
+        std::cerr << "Child: Error reading array" << std::endl;
         delete[] arr;
         return;
     }
@@ -34,7 +33,7 @@ void ModeChild()
     DWORD bytesWritten;
     if (!WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), &average, sizeof(average), &bytesWritten, NULL))
     {
-        cerr << "Child: Error writing result" << endl;
+        std::cerr << "Child: Error writing result" << std::endl;
     }
     
     delete[] arr;
@@ -43,25 +42,25 @@ void ModeChild()
 void ModeParent()
 {
     int size;
-    cout << "Enter array size: ";
-    cin >> size;
+    std::cout << "Enter array size: ";
+    std::cin >> size;
     
     if (size <= 0)
     {
-        cout << "Invalid array size" << endl;
+        std::cout << "Invalid array size" << std::endl;
         return;
     }
     
     int* arr = new int[size];
     
     srand(static_cast<unsigned int>(time(nullptr)));
-    cout << "Array: ";
+    std::cout << "Array: ";
     for (int i = 0; i < size; i++)
     {
         arr[i] = rand() % 100;
-        cout << arr[i] << " ";
+        std::cout << arr[i] << " ";
     }
-    cout << endl;
+    std::cout << std::endl;
     
 
     HANDLE hReadPipe1, hWritePipe1;
@@ -74,7 +73,7 @@ void ModeParent()
     
     if (!CreatePipe(&hReadPipe1, &hWritePipe1, &sa, 0))
     {
-        cerr << "Pipe 1 wasn't created" << endl;
+        std::cerr << "Pipe 1 wasn't created" << std::endl;
         CloseHandle(hReadPipe1);
         CloseHandle(hWritePipe1);
         delete[] arr;
@@ -83,7 +82,7 @@ void ModeParent()
     
     if (!CreatePipe(&hReadPipe2, &hWritePipe2, &sa, 0))
     {
-        cerr << "Pipe 2 wasn't created" << endl;
+        std::cerr << "Pipe 2 wasn't created" << std::endl;
         CloseHandle(hReadPipe2);
         CloseHandle(hWritePipe2);
         delete[] arr;
@@ -91,23 +90,23 @@ void ModeParent()
     }
     
 
-    STARTUPINFO si;
+    STARTUPINFOA si;
     PROCESS_INFORMATION pi;
     
-    ZeroMemory(&si, sizeof(STARTUPINFO));
-    si.cb = sizeof(STARTUPINFO);
+    ZeroMemory(&si, sizeof(STARTUPINFOA));
+    si.cb = sizeof(STARTUPINFOA);
     si.dwFlags = STARTF_USESTDHANDLES;
     si.hStdInput = hReadPipe1; 
     si.hStdOutput = hWritePipe2;
     si.hStdError = GetStdHandle(STD_ERROR_HANDLE);
     
   
-    string commandLine = "lab2.exe child";
+    char commandLine[] = "lab2.exe child";
     
     
-    if (!CreateProcess(
+    if (!CreateProcessA(
         NULL,                      // Имя исполняемого модуля
-        const_cast<LPSTR>(commandLine.c_str()), // Командная строка
+        commandLine, // Командная строка
         NULL,                      // Атрибуты защиты процесса
         NULL,                      // Атрибуты защиты потока
         TRUE,                      // Наследование дескрипторов
@@ -117,7 +116,7 @@ void ModeParent()
         &si,                       // STARTUPINFO
         &pi))                      // PROCESS_INFORMATION
     {
-        cerr << "Process wasn't created" << endl;
+        std::cerr << "Process wasn't created" << std::endl;
         CloseHandle(hReadPipe1);
         CloseHandle(hWritePipe1);
         CloseHandle(hReadPipe2);
@@ -134,12 +133,12 @@ void ModeParent()
     
     if (!WriteFile(hWritePipe1, &size, sizeof(size), &bytesWritten, NULL))
     {
-        cerr << "Error writing array size" << endl;
+        std::cerr << "Error writing array size" << std::endl;
     }
     
     if (!WriteFile(hWritePipe1, arr, size * sizeof(int), &bytesWritten, NULL))
     {
-        cerr << "Error writing array" << endl;
+        std::cerr << "Error writing array" << std::endl;
     }
     
     CloseHandle(hWritePipe1);
@@ -148,11 +147,11 @@ void ModeParent()
     DWORD bytesRead;
     if (ReadFile(hReadPipe2, &result, sizeof(result), &bytesRead, NULL))
     {
-        cout << "Average of array elements: " << result << endl;
+        std::cout << "Average of array elements: " << result << std::endl;
     }
     else
     {
-        cerr << "Error reading result from child process" << endl;
+        std::cerr << "Error reading result from child process" << std::endl;
     }
     
    
@@ -170,7 +169,7 @@ void ModeParent()
 
 int main(int argc, char* argv[])
 {
-    if (argc > 1 && string(argv[1]) == "child")
+    if (argc > 1 && std::string(argv[1]) == "child")
     {
         ModeChild();
     }
