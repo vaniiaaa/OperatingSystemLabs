@@ -18,9 +18,9 @@ struct Data
 DWORD WINAPI marker(LPVOID _data)
 {
     Data* data = (Data*)_data;
+    WaitForSingleObject(data->StartEvent, INFINITE);
     std::srand(8);
     int count = 0 ;
-    WaitForSingleObject(data->MainSignal, INFINITE);
     bool cont = true;
     while(cont) {
         int index = rand() % data->size;
@@ -35,10 +35,11 @@ DWORD WINAPI marker(LPVOID _data)
         }
         else 
         {
-            LeaveCriticalSection(data->cs);
+            
             std::cout << "Marker num: " << data->markn << " Num of changed pos: " << count << " Index of arr: " << index << '\n';
             SetEvent(data->MarkSignal);
             ResetEvent(data->MainSignal);
+            LeaveCriticalSection(data->cs);
             if (WaitForSingleObject(data->MainSignal, INFINITE) == WAIT_OBJECT_0) continue;
             else 
             {
@@ -51,6 +52,7 @@ DWORD WINAPI marker(LPVOID _data)
         }
         
     }
+    return 0;
 }
 
 int main()
@@ -97,10 +99,30 @@ int main()
             NULL
         );
     }
-    
-
-
     InitializeCriticalSection(&cs);
+    SetEvent(StartEvent);
+    while(true)
+    {
+        WaitForMultipleObjects(
+            nummark, //колво объектов
+            MarkSignals,
+            TRUE, //TRUE - ожидание всех в сигнальное, FALSE - любой
+            INFINITE  //время ожидания
+        );
+        std::cout << "Input num of marker to terminate: ";
+        int mark;
+        std::cin >> mark;
+        //ХУЙНЯ ДАЛЬШЕ
+        SetEvent(MainSignals[mark - 1]);
+        WaitForSingleObject(Markers[mark - 1], INFINITE);
+        for (int i = 0; i < nummark; i++) std::cout << Arr[i] << " ";
+        std::cout << '\n';
+        for (int i = 0; i < nummark; i++) //перевести все мейны кроме уже обнуленных в сигнальное
+        {
+
+        }
+        if(WaitForMultipleObjects(nummark, MarkSignals, TRUE, 0) != WAIT_TIMEOUT) break;
+    }
 
 
     for (int i = 0; i < nummark; i++)
