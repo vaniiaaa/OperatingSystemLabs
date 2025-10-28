@@ -2,9 +2,10 @@
 #include <iostream>
 #include <ctime>
 
+
 CRITICAL_SECTION cs;
 
-struct data
+struct Data
 {
     int* Arr;
     int size;
@@ -13,6 +14,44 @@ struct data
     CRITICAL_SECTION* cs;
 
 };
+
+DWORD WINAPI marker(LPVOID _data)
+{
+    Data* data = (Data*)_data;
+    std::srand(8);
+    int count = 0 ;
+    WaitForSingleObject(data->MainSignal, INFINITE);
+    bool cont = true;
+    while(cont) {
+        int index = rand() % data->size;
+        EnterCriticalSection(data->cs);
+        if (data->Arr[index] == 0)
+        {
+            Sleep(5);
+            data->Arr[index] = data->markn;
+            Sleep(5);
+            count++;
+            LeaveCriticalSection(data->cs);
+        }
+        else 
+        {
+            LeaveCriticalSection(data->cs);
+            std::cout << "Marker num: " << data->markn << " Num of changed pos: " << count << " Index of arr: " << index << '\n';
+            SetEvent(data->MarkSignal);
+            ResetEvent(data->MainSignal);
+            if (WaitForSingleObject(data->MainSignal, INFINITE) == WAIT_OBJECT_0) continue;
+            else 
+            {
+                cont = false;
+                EnterCriticalSection(data->cs);
+                for (int i = 0; i < data->size; i++) if (data->Arr[i] == data->markn) data->Arr[i] = 0;
+                LeaveCriticalSection(data->cs);
+            }
+            
+        }
+        
+    }
+}
 
 int main()
 {
@@ -25,7 +64,7 @@ int main()
     HANDLE* MarkSignals = new HANDLE[nummark];
     HANDLE* MainSignals = new HANDLE[nummark];
     HANDLE* Markers = new HANDLE[nummark];
-    data* ArrData = new data[nummark];
+    Data* ArrData = new Data[nummark];
     HANDLE StartEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
     for (int i = 0; i < nummark; i++)
     {
@@ -56,7 +95,7 @@ int main()
             &ArrData[i],
             0,
             NULL
-        )
+        );
     }
     
 
@@ -64,6 +103,13 @@ int main()
     InitializeCriticalSection(&cs);
 
 
+    for (int i = 0; i < nummark; i++)
+    {
+        CloseHandle(Markers[i]);
+        CloseHandle(MarkSignals[i]);
+        CloseHandle(MainSignals[i]);
+    }
+    CloseHandle(StartEvent);
     DeleteCriticalSection(&cs);
-    delete Arr;
+    delete[] Arr, Markers, MarkSignals, MainSignals, ArrData;
 }
