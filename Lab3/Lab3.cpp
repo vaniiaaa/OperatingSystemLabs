@@ -1,6 +1,5 @@
 #include <windows.h>
 #include <iostream>
-#include <ctime>
 
 
 CRITICAL_SECTION cs;
@@ -10,21 +9,20 @@ struct Data
     int* Arr;
     int size;
     int markn;
-    HANDLE StartEvent, MarkSignal, MainSignal;
+    HANDLE StartEvent, MarkSignal, MainSignal, ContinueEvent;
     CRITICAL_SECTION* cs;
-
 };
 
 DWORD WINAPI marker(LPVOID _data)
 {
     Data* data = (Data*)_data;
-    WaitForSingleObject(data->StartEvent, INFINITE);
-    std::srand(8);
     int count = 0 ;
     bool cont = true;
     while(cont) {
-        int index = rand() % data->size;
+        WaitForSingleObject(data->StartEvent, INFINITE);
         EnterCriticalSection(data->cs);
+        std::srand(data->markn);
+        int index = rand() % data->size;
         if (data->Arr[index] == 0)
         {
             Sleep(5);
@@ -35,24 +33,51 @@ DWORD WINAPI marker(LPVOID _data)
         }
         else 
         {
-            
             std::cout << "Marker num: " << data->markn << " Num of changed pos: " << count << " Index of arr: " << index << '\n';
+            count = 0;
             SetEvent(data->MarkSignal);
-            ResetEvent(data->MainSignal);
             LeaveCriticalSection(data->cs);
-            if (WaitForSingleObject(data->MainSignal, INFINITE) == WAIT_OBJECT_0) continue;
-            else 
+            WaitForSingleObject(data->ContinueEvent, INFINITE); 
+            if (WaitForSingleObject(data->MainSignal, 0) == WAIT_OBJECT_0)
             {
                 cont = false;
                 EnterCriticalSection(data->cs);
                 for (int i = 0; i < data->size; i++) if (data->Arr[i] == data->markn) data->Arr[i] = 0;
                 LeaveCriticalSection(data->cs);
+            } 
+            else 
+            {
+                continue;
             }
-            
         }
         
     }
     return 0;
+}
+
+class InvalidBoundInput : public std::exception{};
+class InvalidSecondInput : public std::exception{};
+
+void InputController(int& input, int lower, int upper, HANDLE* MainSignals)
+{
+    while (true)
+    {
+        try 
+        {
+            std::cin >> input;
+            if (lower > input || input > upper) throw InvalidBoundInput();
+            if (WaitForSingleObject(MainSignals[input - 1], 0) == WAIT_OBJECT_0) throw InvalidSecondInput();
+            break;
+        }
+        catch (const InvalidBoundInput& e)
+        {
+            std::cout << "Value have to be between " << lower + 1 << " and " << upper << '\n';
+        }
+        catch (const InvalidSecondInput& e)
+        {
+            std::cout << "Marker " << input << " already terminated" << '\n';
+        }
+    }
 }
 
 int main()
@@ -68,6 +93,7 @@ int main()
     HANDLE* Markers = new HANDLE[nummark];
     Data* ArrData = new Data[nummark];
     HANDLE StartEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+    HANDLE ContinueEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
     for (int i = 0; i < nummark; i++)
     {
         MarkSignals[i] = CreateEvent(
@@ -86,6 +112,7 @@ int main()
         ArrData[i].size = size;
         ArrData[i].markn = i + 1;
         ArrData[i].StartEvent = StartEvent;
+        ArrData[i].ContinueEvent = ContinueEvent;
         ArrData[i].MainSignal = MainSignals[i];
         ArrData[i].MarkSignal = MarkSignals[i];
         ArrData[i].cs = &cs;
@@ -100,28 +127,31 @@ int main()
         );
     }
     InitializeCriticalSection(&cs);
-    SetEvent(StartEvent);
+    
     while(true)
     {
+        SetEvent(StartEvent);
+        ResetEvent(ContinueEvent);
         WaitForMultipleObjects(
             nummark, //колво объектов
             MarkSignals,
             TRUE, //TRUE - ожидание всех в сигнальное, FALSE - любой
             INFINITE  //время ожидания
         );
+        ResetEvent(StartEvent);
         std::cout << "Input num of marker to terminate: ";
         int mark;
-        std::cin >> mark;
-        //ХУЙНЯ ДАЛЬШЕ
+        InputController(mark, 0, nummark, MainSignals);
         SetEvent(MainSignals[mark - 1]);
+        SetEvent(ContinueEvent);
         WaitForSingleObject(Markers[mark - 1], INFINITE);
-        for (int i = 0; i < nummark; i++) std::cout << Arr[i] << " ";
+        for (int i = 0; i < size; i++) std::cout << Arr[i] << " ";
         std::cout << '\n';
-        for (int i = 0; i < nummark; i++) //перевести все мейны кроме уже обнуленных в сигнальное
-        {
-
+        for (int i = 0; i < nummark; i++) {
+            if (WaitForSingleObject(MainSignals[i], 0) == WAIT_OBJECT_0) continue;
+            else ResetEvent(MarkSignals[i]);
         }
-        if(WaitForMultipleObjects(nummark, MarkSignals, TRUE, 0) != WAIT_TIMEOUT) break;
+        if(WaitForMultipleObjects(nummark, MainSignals, TRUE, 0) == WAIT_OBJECT_0) break;
     }
 
 
