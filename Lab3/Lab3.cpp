@@ -18,10 +18,10 @@ DWORD WINAPI marker(LPVOID _data)
     Data* data = (Data*)_data;
     int count = 0 ;
     bool cont = true;
+    std::srand(data->markn);
     while(cont) {
         WaitForSingleObject(data->StartEvent, INFINITE);
         EnterCriticalSection(data->cs);
-        std::srand(data->markn);
         int index = rand() % data->size;
         if (data->Arr[index] == 0)
         {
@@ -139,7 +139,8 @@ int main()
             INFINITE  //время ожидания
         );
         ResetEvent(StartEvent);
-        std::cout << "Input num of marker to terminate: ";
+        for (int i = 0; i < size; i++) std::cout << Arr[i] << " ";
+        std::cout << '\n' << "Input num of marker to terminate: ";
         int mark;
         InputController(mark, 0, nummark, MainSignals);
         SetEvent(MainSignals[mark - 1]);
