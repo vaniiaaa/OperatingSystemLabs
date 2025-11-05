@@ -6,8 +6,8 @@ TEST(IntegrationTests, TestOneMarker)
     MarkerRunner runner(10, 1);
     runner.StartMarkers();
     runner.WaitForAllMarkers();
-    std::srand(1);
     int i = runner.GetNumOfMarked();
+    std::srand(1);
     while (i > 0)
     {
         int index = rand() % 10;
@@ -59,5 +59,5 @@ TEST(ConcurrencyTests, Test10MarkersTerminated)
         i++;
         runner.ContinueMarkers();
     }
-    
+    std::system("pause");
 }

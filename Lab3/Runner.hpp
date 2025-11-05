@@ -17,7 +17,7 @@ void InputController(int &input, int lower, int upper, HANDLE *MainSignals)
         try
         {
             std::cin >> input;
-            if (lower > input || input > upper)
+            if (lower >= input || input > upper)
                 throw InvalidBoundInput();
             if (WaitForSingleObject(MainSignals[input - 1], 0) == WAIT_OBJECT_0)
                 throw InvalidSecondInput();
