@@ -36,4 +36,4 @@ std::vector<int> FindFactorials(int n) {
 }
 
 
-#endif // FACT_HPP
+#endif FACT_HPP
