@@ -1,0 +1,40 @@
+Test case 1:
+  Original: 1 -> 2 -> 3 -> 4 -> 5
+  Reversed: 5 -> 4 -> 3 -> 2 -> 1
+
+Test case 2:
+  Original: 10 -> 20 -> 30 -> 40 -> 50
+  Reversed: 50 -> 40 -> 30 -> 20 -> 10
+
+Test case 3:
+  Original: 7 -> 8 -> 9
+  Reversed: 9 -> 8 -> 7
+
+Test case 4:
+  Original: 100
+  Reversed: 100
+
+Test case 5:
+  Original: 5 -> 4 -> 3 -> 2 -> 1
+  Reversed: 1 -> 2 -> 3 -> 4 -> 5
+
+Test case 6:
+  Original: 15 -> 25 -> 35 -> 45
+  Reversed: 45 -> 35 -> 25 -> 15
+
+Test case 7:
+  Original: -1 -> -2 -> -3 -> -4
+  Reversed: -4 -> -3 -> -2 -> -1
+
+Test case 8:
+  Original: 0 -> 0 -> 0
+  Reversed: 0 -> 0 -> 0
+
+Test case 9:
+  Original: 99 -> 88 -> 77 -> 66 -> 55 -> 44
+  Reversed: 44 -> 55 -> 66 -> 77 -> 88 -> 99
+
+Test case 10:
+  Original: 1 -> 1 -> 2 -> 2 -> 3 -> 3
+  Reversed: 3 -> 3 -> 2 -> 2 -> 1 -> 1
+
