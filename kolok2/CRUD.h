@@ -1,6 +1,7 @@
 #include "crow_all.h"
 #include "data.h"
 #include "db.h"
+#include "logger.h"
 #include <iostream>
 #include <string>
 #include <vector>
@@ -8,15 +9,20 @@
 void Runner()
 {
     init_db();
+    log_message("Server starting on port 1499...");
     crow::SimpleApp app;
 
     CROW_ROUTE(app, "/tasks")
         .methods(crow::HTTPMethod::Post)(
             [](const crow::request &req)
             {
+                log_message("POST /tasks received");
                 auto x = crow::json::load(req.body);
                 if (!x)
+                {
+                    log_message("POST /tasks - Bad JSON");
                     return crow::response(400, "Bad Request");
+                }
 
                 std::string title = x["title"].s();
                 std::string description = x.has("description")
@@ -31,8 +37,10 @@ void Runner()
                 sqlite3_stmt *stmt;
 
                 if (sqlite3_prepare_v2(db, sql, -1, &stmt, 0) != SQLITE_OK)
+                {
+                    log_message("POST /tasks - DB Error");
                     return crow::response(500, "Database Error");
-
+                }
                 sqlite3_bind_text(stmt, 1, title.c_str(), -1, SQLITE_STATIC);
                 sqlite3_bind_text(stmt, 2, description.c_str(), -1,
                                   SQLITE_STATIC);
@@ -41,6 +49,7 @@ void Runner()
                 if (sqlite3_step(stmt) != SQLITE_DONE)
                 {
                     sqlite3_finalize(stmt);
+                    log_message("POST /tasks - Failed to insert task");
                     return crow::response(500, "Failed to insert task");
                 }
 
@@ -48,6 +57,8 @@ void Runner()
                 sqlite3_finalize(stmt);
 
                 Task new_task{(int)new_id, title, description, status};
+                log_message("POST /tasks - Task created ID: " +
+                            std::to_string(new_id));
                 return crow::response(201, new_task.to_json());
             });
 
@@ -55,6 +66,7 @@ void Runner()
         .methods(crow::HTTPMethod::Get)(
             []()
             {
+                log_message("GET /tasks - received");
                 std::vector<crow::json::wvalue> result_list;
                 const char *sql =
                     "SELECT id, title, description, status FROM tasks;";
@@ -75,10 +87,16 @@ void Runner()
                             sqlite3_column_text(stmt, 3));
                         t.status = s ? s : "todo";
                         result_list.push_back(t.to_json());
+                        log_message("GET /tasks - task id[" +
+                                    std::to_string(t.id) + "] found");
                     }
                 }
+                else
+                {
+                    log_message("GET /tasks - DB Error");
+                }
                 sqlite3_finalize(stmt);
-
+                log_message("GET /tasks - tasks returned");
                 crow::json::wvalue final_json =
                     crow::json::wvalue::list(result_list);
                 return crow::response(200, final_json);
@@ -88,11 +106,15 @@ void Runner()
         .methods(crow::HTTPMethod::Get)(
             [](int id)
             {
+                log_message("GET /task/" + std::to_string(id) + " - received");
                 Task t;
                 if (!get_task_from_db(id, t))
                 {
+                    log_message("GET /task/" + std::to_string(id) +
+                                " - not found");
                     return crow::response(404, "Task not found");
                 }
+                log_message("GET /task/" + std::to_string(id) + " - found");
                 return crow::response(200, t.to_json());
             });
 
@@ -100,13 +122,19 @@ void Runner()
         .methods(crow::HTTPMethod::Put)(
             [](const crow::request &req, int id)
             {
+                log_message("PUT /task/" + std::to_string(id) + " - received");
                 auto x = crow::json::load(req.body);
                 if (!x)
+                {
+                    log_message("PUT /task/" + std::to_string(id) +
+                                " - Bad JSON");
                     return crow::response(400, "Bad JSON");
-
+                }
                 Task t;
                 if (!get_task_from_db(id, t))
                 {
+                    log_message("PUT /task/" + std::to_string(id) +
+                                " - not found");
                     return crow::response(404, "Task not found");
                 }
 
@@ -122,8 +150,11 @@ void Runner()
                 sqlite3_stmt *stmt;
 
                 if (sqlite3_prepare_v2(db, sql, -1, &stmt, 0) != SQLITE_OK)
+                {
+                    log_message("PUT /task/" + std::to_string(id) +
+                                " - DB Error");
                     return crow::response(500, "DB Error");
-
+                }
                 sqlite3_bind_text(stmt, 1, new_title.c_str(), -1,
                                   SQLITE_STATIC);
                 sqlite3_bind_text(stmt, 2, new_desc.c_str(), -1, SQLITE_STATIC);
@@ -137,6 +168,8 @@ void Runner()
                 t.title = new_title;
                 t.description = new_desc;
                 t.status = new_status;
+                log_message("PUT /task/" + std::to_string(id) +
+                            " - successfully changed");
                 return crow::response(200, t.to_json());
             });
 
@@ -144,30 +177,41 @@ void Runner()
         .methods(crow::HTTPMethod::Delete)(
             [](int id)
             {
+                log_message("DELETE /task/" + std::to_string(id) +
+                            " - received");
                 Task t;
                 if (!get_task_from_db(id, t))
                 {
+                    log_message("DELETE /task/" + std::to_string(id) +
+                                " - task not found");
                     return crow::response(404, "Task not found");
                 }
 
                 const char *sql = "DELETE FROM tasks WHERE id = ?;";
                 sqlite3_stmt *stmt;
                 if (sqlite3_prepare_v2(db, sql, -1, &stmt, 0) != SQLITE_OK)
+                {
+                    log_message("DELETE /task/" + std::to_string(id) +
+                                " - DB Error");
                     return crow::response(500, "DB Error");
+                }
 
                 sqlite3_bind_int(stmt, 1, id);
                 sqlite3_step(stmt);
                 sqlite3_finalize(stmt);
-
+                log_message("DELETE /task/" + std::to_string(id) +
+                            " - successfully deleted");
                 return crow::response(200, t.to_json());
             });
 
     CROW_ROUTE(app, "/stop")(
         [&app]()
         {
+            log_message("STOP /stop - received");
             app.stop();
             if (db)
                 sqlite3_close(db);
+            log_message("STOP /stop - app stopped");
             return "App shutdown";
         });
 

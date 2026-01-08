@@ -1,4 +1,5 @@
 #include "data.h"
+#include "logger.h"
 #include "sqlite3.h"
 #include <iostream>
 
@@ -9,7 +10,10 @@ void init_db()
     int rc = sqlite3_open("tasks.db", &db);
     if (rc)
     {
-        std::cerr << "Can't open database: " << sqlite3_errmsg(db) << std::endl;
+        std::string err =
+            "Can't open database: " + std::string(sqlite3_errmsg(db));
+        std::cerr << err << std::endl;
+        log_message("ERROR: " + err);
         return;
     }
 
@@ -23,8 +27,14 @@ void init_db()
     rc = sqlite3_exec(db, sql, 0, 0, &errMsg);
     if (rc != SQLITE_OK)
     {
-        std::cerr << "SQL error: " << errMsg << std::endl;
+        std::string err = "SQL error: " + std::string(errMsg);
+        std::cerr << err << std::endl;
+        log_message("ERROR: " + err);
         sqlite3_free(errMsg);
+    }
+    else
+    {
+        log_message("Database initialized successfully.");
     }
 }
 
